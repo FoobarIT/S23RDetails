@@ -1,23 +1,58 @@
-#include "PluginProcessor.h"
+﻿#include "PluginProcessor.h"
 #include "PluginEditor.h"
 
 //==============================================================================
 PluginProcessor::PluginProcessor()
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
+    : AudioProcessor (BusesProperties()
+#if !JucePlugin_IsMidiEffect
+    #if !JucePlugin_IsSynth
+              .withInput ("Input", juce::AudioChannelSet::stereo(), true)
+    #endif
+              .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+#endif
+              ),
+      apvts (*this, nullptr, "Parameters", createParameters())
 {
+    scopeBuffer.setSize (getTotalNumOutputChannels(), scopeBufferSize);
 }
-
 PluginProcessor::~PluginProcessor()
 {
 }
 
+juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParameters()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("WIDTH1", "Width Band 1", 0.0f, 2.0f, 1.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("WIDTH2", "Width Band 2", 0.0f, 2.0f, 1.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("WIDTH3", "Width Band 3", 0.0f, 2.0f, 1.0f));
+    params.push_back (std::make_unique<juce::AudioParameterFloat> ("WIDTH4", "Width Band 4", 0.0f, 2.0f, 1.0f));
+
+
+    return { params.begin(), params.end() };
+}
+
+void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.numChannels = getTotalNumOutputChannels();
+
+    bandProcessor.prepare (spec);
+
+    const int numChannels = getTotalNumOutputChannels();
+
+    const int circularBufferSize = scopeBufferSize * 2;
+
+    circularBuffer.setSize (numChannels, circularBufferSize);
+    circularBuffer.clear();
+
+    scopeBuffer.setSize (numChannels, scopeBufferSize);
+    scopeBuffer.clear();
+
+    circularFifo.setTotalSize (circularBufferSize); // 🔧 C’est ça qui manquait !
+}
 //==============================================================================
 const juce::String PluginProcessor::getName() const
 {
@@ -26,29 +61,29 @@ const juce::String PluginProcessor::getName() const
 
 bool PluginProcessor::acceptsMidi() const
 {
-   #if JucePlugin_WantsMidiInput
+#if JucePlugin_WantsMidiInput
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
 bool PluginProcessor::producesMidi() const
 {
-   #if JucePlugin_ProducesMidiOutput
+#if JucePlugin_ProducesMidiOutput
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
 bool PluginProcessor::isMidiEffect() const
 {
-   #if JucePlugin_IsMidiEffect
+#if JucePlugin_IsMidiEffect
     return true;
-   #else
+#else
     return false;
-   #endif
+#endif
 }
 
 double PluginProcessor::getTailLengthSeconds() const
@@ -58,8 +93,8 @@ double PluginProcessor::getTailLengthSeconds() const
 
 int PluginProcessor::getNumPrograms()
 {
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+    return 1; // NB: some hosts don't cope very well if you tell them there are 0 programs,
+        // so this should be at least 1, even if you're not really implementing programs.
 }
 
 int PluginProcessor::getCurrentProgram()
@@ -83,13 +118,6 @@ void PluginProcessor::changeProgramName (int index, const juce::String& newName)
     juce::ignoreUnused (index, newName);
 }
 
-//==============================================================================
-void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
-}
 
 void PluginProcessor::releaseResources()
 {
@@ -99,55 +127,120 @@ void PluginProcessor::releaseResources()
 
 bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
+#if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
     return true;
-  #else
+#else
     // This is the place where you check if the layout is supported.
     // In this template code we only support mono or stereo.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
     // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
+    #if !JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
+    #endif
 
     return true;
-  #endif
+#endif
 }
 
 void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
+    juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    // Traitement du signal en 4 bandes
+    juce::AudioBuffer<float> low, midLow, midHigh, high;
+    bandProcessor.process (buffer, low, midLow, midHigh, high);
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    // Récupération des paramètres width
+    float width1 = *apvts.getRawParameterValue ("WIDTH1");
+    float width2 = *apvts.getRawParameterValue ("WIDTH2");
+    float width3 = *apvts.getRawParameterValue ("WIDTH3");
+    float width4 = *apvts.getRawParameterValue ("WIDTH4");
+
+    auto applyWidth = [&] (juce::AudioBuffer<float>& band, float width) {
+        if (band.getNumChannels() < 2)
+            return; // On ne peut pas faire de traitement mid/side sans 2 canaux
+
+        auto* left = band.getWritePointer (0);
+        auto* right = band.getWritePointer (1);
+        int numSamples = band.getNumSamples();
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float mid = 0.5f * (left[i] + right[i]);
+            float side = 0.5f * (left[i] - right[i]);
+            side *= width;
+            left[i] = mid + side;
+            right[i] = mid - side;
+        }
+    };
+
+    applyWidth (low, width1);
+    applyWidth (midLow, width2);
+    applyWidth (midHigh, width3);
+    applyWidth (high, width4);
+
+    // Remise à zéro du buffer principal avant addition des bandes
+    buffer.clear();
+
+    const int numChannels = buffer.getNumChannels();
+
+    // Addition des bandes dans le buffer principal avec vérifications
+    for (int ch = 0; ch < numChannels; ++ch)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        if (ch < low.getNumChannels())
+            buffer.addFrom (ch, 0, low, ch, 0, low.getNumSamples());
+
+        if (ch < midLow.getNumChannels())
+            buffer.addFrom (ch, 0, midLow, ch, 0, midLow.getNumSamples());
+
+        if (ch < midHigh.getNumChannels())
+            buffer.addFrom (ch, 0, midHigh, ch, 0, midHigh.getNumSamples());
+
+        if (ch < high.getNumChannels())
+            buffer.addFrom (ch, 0, high, ch, 0, high.getNumSamples());
+    }
+
+    // Gestion du buffer circulaire pour scope
+    const int maxSamples = buffer.getNumSamples();
+    const int totalFifoSize = circularFifo.getTotalSize();
+    const int numSamplesToCopy = juce::jmin (totalFifoSize, maxSamples);
+
+    {
+        std::scoped_lock lock (scopeBufferMutex);
+
+        if (circularFifo.getFreeSpace() >= numSamplesToCopy && numSamplesToCopy > 0)
+        {
+            int start1, size1, start2, size2;
+            circularFifo.prepareToWrite (numSamplesToCopy, start1, size1, start2, size2);
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                if (size1 > 0)
+                    circularBuffer.copyFrom (ch, start1, buffer, ch, 0, size1);
+                if (size2 > 0)
+                    circularBuffer.copyFrom (ch, start2, buffer, ch, size1, size2);
+            }
+            circularFifo.finishedWrite (size1 + size2);
+        }
+
+        int start1, size1, start2, size2;
+        circularFifo.prepareToRead (scopeBufferSize, start1, size1, start2, size2);
+
+        for (int ch = 0; ch < scopeBuffer.getNumChannels(); ++ch)
+        {
+            if (size1 > 0)
+                scopeBuffer.copyFrom (ch, 0, circularBuffer, ch, start1, size1);
+            if (size2 > 0)
+                scopeBuffer.copyFrom (ch, size1, circularBuffer, ch, start2, size2);
+        }
+
+        circularFifo.finishedRead (size1 + size2);
     }
 }
 

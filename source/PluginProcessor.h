@@ -1,9 +1,10 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "components/BandProcessor.h"
 
 #if (MSVC)
-#include "ipps.h"
+    #include "ipps.h"
 #endif
 
 class PluginProcessor : public juce::AudioProcessor
@@ -35,9 +36,26 @@ public:
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
 
+    juce::AudioProcessorValueTreeState apvts;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
+
+    std::mutex& getScopeBufferMutex() { return scopeBufferMutex; }
+    const juce::AudioBuffer<float>& getScopeBuffer() const { return scopeBuffer;}
+
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+
+    BandProcessor bandProcessor;
+
+    juce::AudioBuffer<float> scopeBuffer;
+    juce::AudioBuffer<float> circularBuffer;
+    juce::AbstractFifo circularFifo { 2048 };
+    const int scopeBufferSize = 512;
+
+    std::mutex scopeBufferMutex;
+
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
 };
