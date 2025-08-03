@@ -249,7 +249,11 @@ jobs:
     steps:
       - name: Get Artifacts
         uses: actions/download-artifact@v4
+        with:
+            path: ./artifacts
 
+      - name: Debug - Show Artifacts
+        run: ls -R ./artifacts
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
