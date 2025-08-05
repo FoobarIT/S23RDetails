@@ -35,7 +35,7 @@ set(BUNDLE_ID "com.sr23.plugins")
 
 # Change me! Set the plugin formats you want built
 # Valid choices: AAX Unity VST VST3 AU AUv3 Standalone
-set(FORMATS Standalone AU VST3 AUv3 LV2)
+set(FORMATS Standalone AU VST3 AUv3)
 
 # Force JUCE to work with sccache
 # instruct MSVC to embed debug info (/Z7) instead of emitting a .pdb
@@ -59,11 +59,6 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 
 # This adds the melatonin inspector module
 add_subdirectory (modules/melatonin_inspector)
-
-if(UNIX AND NOT APPLE)
-    message(STATUS "Building LV2 plugin format")
-    list(APPEND JUCE_FORMATS LV2)
-endif()
 
 # See `docs/CMake API.md` in the JUCE repo for all config options
 juce_add_plugin("${PROJECT_NAME}"
@@ -93,8 +88,6 @@ juce_add_plugin("${PROJECT_NAME}"
     # This can be different from PROJECT_NAME and can have spaces!
     # You might want to use v${MAJOR_VERSION} here once you go to v2...
     PRODUCT_NAME "${PRODUCT_NAME}"
-    LV2_URI "urn:sr23:plugins:SR23Details"
-    LV2_SHARED_LIBRARY_NAME "${PRODUCT_NAME}"
 )
 
 # This lets us use our code in both the JUCE targets and our Test target
