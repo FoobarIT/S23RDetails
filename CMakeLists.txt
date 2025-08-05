@@ -35,7 +35,7 @@ set(BUNDLE_ID "com.sr23.plugins")
 
 # Change me! Set the plugin formats you want built
 # Valid choices: AAX Unity VST VST3 AU AUv3 Standalone
-set(FORMATS Standalone LV2 AU VST3 AUv3)
+set(FORMATS Standalone AU VST3 AUv3 LV2)
 
 # Force JUCE to work with sccache
 # instruct MSVC to embed debug info (/Z7) instead of emitting a .pdb
@@ -88,6 +88,7 @@ juce_add_plugin("${PROJECT_NAME}"
     # This can be different from PROJECT_NAME and can have spaces!
     # You might want to use v${MAJOR_VERSION} here once you go to v2...
     PRODUCT_NAME "${PRODUCT_NAME}")
+    LV2_URI "urn:sr23:plugins:SR23Details"
 
 # This lets us use our code in both the JUCE targets and our Test target
 # Without running into ODR violations
