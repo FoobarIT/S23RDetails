@@ -71,5 +71,16 @@ private:
     float xToFrequency (float x) const;
     float getSeparatorHitboxWidth() const { return 8.0f; }
 
+    void paint (juce::Graphics& g) override;
+    void mouseDown (const juce::MouseEvent& e) override;
+    void mouseDrag (const juce::MouseEvent& e) override;
+
+    // Fonctions de dessin appelées dans paint()
+    void drawBackgroundAndShadow (juce::Graphics& g);
+    void drawBands (juce::Graphics& g);
+    void drawSeparators (juce::Graphics& g);
+    void drawFrequencies (juce::Graphics& g);
+    void drawSpectrum (juce::Graphics& g);
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MultibandWidget)
 };

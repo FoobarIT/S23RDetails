@@ -300,7 +300,4 @@ float MultibandWidget::xToFrequency (float x) const
     return minFreq * std::pow (maxFreq / minFreq, norm);
 }
 
-int MultibandWidget::getSeparatorHitboxWidth() const
-{
-    return 8;
-}
+
