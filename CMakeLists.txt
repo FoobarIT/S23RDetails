@@ -60,6 +60,11 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 # This adds the melatonin inspector module
 add_subdirectory (modules/melatonin_inspector)
 
+if(UNIX AND NOT APPLE)
+    message(STATUS "Building LV2 plugin format")
+    list(APPEND JUCE_FORMATS LV2)
+endif()
+
 # See `docs/CMake API.md` in the JUCE repo for all config options
 juce_add_plugin("${PROJECT_NAME}"
     # Icons for the standalone app
@@ -88,7 +93,9 @@ juce_add_plugin("${PROJECT_NAME}"
     # This can be different from PROJECT_NAME and can have spaces!
     # You might want to use v${MAJOR_VERSION} here once you go to v2...
     PRODUCT_NAME "${PRODUCT_NAME}"
-    LV2_URI "urn:sr23:plugins:SR23Details")
+    LV2_URI "urn:sr23:plugins:SR23Details"
+    LV2_SHARED_LIBRARY_NAME "${PRODUCT_NAME}"
+)
 
 # This lets us use our code in both the JUCE targets and our Test target
 # Without running into ODR violations
