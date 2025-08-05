@@ -2,7 +2,7 @@
 
 void BandProcessor::prepare(const juce::dsp::ProcessSpec& spec)
 {
-    sampleRate = spec.sampleRate;
+    sampleRate = static_cast<float>(spec.sampleRate);
 
     for (int ch = 0; ch < 2; ++ch)
     {
@@ -53,13 +53,11 @@ void BandProcessor::process(const juce::AudioBuffer<float>& input,
     jassert(isPrepared);
     const int numSamples = input.getNumSamples();
 
-    // Resize output buffers
     low.setSize(2, numSamples);
     midLow.setSize(2, numSamples);
     midHigh.setSize(2, numSamples);
     high.setSize(2, numSamples);
 
-    // 1. LOW = LP @ freq1
     low.makeCopyOf(input);
     for (int ch = 0; ch < 2; ++ch)
     {
@@ -67,7 +65,6 @@ void BandProcessor::process(const juce::AudioBuffer<float>& input,
         lowPass1[ch].process(juce::dsp::ProcessContextReplacing<float>(block));
     }
 
-    // 2. HIGH = HP @ freq3
     high.makeCopyOf(input);
     for (int ch = 0; ch < 2; ++ch)
     {
@@ -75,7 +72,6 @@ void BandProcessor::process(const juce::AudioBuffer<float>& input,
         highPass3[ch].process(juce::dsp::ProcessContextReplacing<float>(block));
     }
 
-    // 3. MID = input - low - high
     juce::AudioBuffer<float> mid;
     mid.makeCopyOf(input);
     for (int ch = 0; ch < 2; ++ch)
@@ -86,8 +82,6 @@ void BandProcessor::process(const juce::AudioBuffer<float>& input,
         for (int i = 0; i < numSamples; ++i)
             m[i] -= (l[i] + h[i]);
     }
-
-    // 4. MID-LOW = LP @ freq2 (sur mid)
     midLow.makeCopyOf(mid);
     for (int ch = 0; ch < 2; ++ch)
     {
@@ -95,7 +89,6 @@ void BandProcessor::process(const juce::AudioBuffer<float>& input,
         lowPass2[ch].process(juce::dsp::ProcessContextReplacing<float>(block));
     }
 
-    // 5. MID-HIGH = mid - midLow
     midHigh.makeCopyOf(mid);
     for (int ch = 0; ch < 2; ++ch)
     {

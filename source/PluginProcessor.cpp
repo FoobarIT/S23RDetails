@@ -34,12 +34,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParam
 
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    juce::dsp::ProcessSpec spec;
+    juce::dsp::ProcessSpec spec {};
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumOutputChannels();
 
-    bandProcessor.prepare (spec);
+    multibandWidget.prepare (spec);
 
     const int numChannels = getTotalNumOutputChannels();
 
@@ -51,7 +51,7 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     scopeBuffer.setSize (numChannels, scopeBufferSize);
     scopeBuffer.clear();
 
-    circularFifo.setTotalSize (circularBufferSize); // 🔧 C’est ça qui manquait !
+    circularFifo.setTotalSize (circularBufferSize); 
 }
 //==============================================================================
 const juce::String PluginProcessor::getName() const
@@ -150,11 +150,25 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midiMessages)
 {
+    (void) midiMessages;
     juce::ScopedNoDenormals noDenormals;
 
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    // Initialisation des buffers pour chaque bande
+    juce::AudioBuffer<float> low (numChannels, numSamples);
+    juce::AudioBuffer<float> midLow (numChannels, numSamples);
+    juce::AudioBuffer<float> midHigh (numChannels, numSamples);
+    juce::AudioBuffer<float> high (numChannels, numSamples);
+
+    low.clear();
+    midLow.clear();
+    midHigh.clear();
+    high.clear();
+
     // Traitement du signal en 4 bandes
-    juce::AudioBuffer<float> low, midLow, midHigh, high;
-    bandProcessor.process (buffer, low, midLow, midHigh, high);
+    multibandWidget.process (buffer, low, midLow, midHigh, high);
 
     // Récupération des paramètres width
     float width1 = *apvts.getRawParameterValue ("WIDTH1");
@@ -168,9 +182,9 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         auto* left = band.getWritePointer (0);
         auto* right = band.getWritePointer (1);
-        int numSamples = band.getNumSamples();
+        int numSamplesBand = band.getNumSamples();
 
-        for (int i = 0; i < numSamples; ++i)
+        for (int i = 0; i < numSamplesBand; ++i)
         {
             float mid = 0.5f * (left[i] + right[i]);
             float side = 0.5f * (left[i] - right[i]);
@@ -187,8 +201,6 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // Remise à zéro du buffer principal avant addition des bandes
     buffer.clear();
-
-    const int numChannels = buffer.getNumChannels();
 
     // Addition des bandes dans le buffer principal avec vérifications
     for (int ch = 0; ch < numChannels; ++ch)

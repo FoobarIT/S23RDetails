@@ -23,7 +23,6 @@ private:
 
     bool isPrepared = false;
 
-    // 12 filtres : 2 par crossover (low/high) 2 canaux  3 crossovers
     juce::dsp::IIR::Filter<float> lowPass1[2];   // Freq1
     juce::dsp::IIR::Filter<float> highPass1[2];
 

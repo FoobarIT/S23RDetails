@@ -56,7 +56,7 @@ void SpectrumDisplay::paint(juce::Graphics& g)
     auto height = getHeight();
 
     juce::Path spectrumPath;
-    spectrumPath.startNewSubPath(0, height);
+    spectrumPath.startNewSubPath(static_cast<float>(0), static_cast<float>(height));
 
     for (int i = 0; i < (int)magnitudes.size(); ++i)
     {
@@ -70,9 +70,5 @@ void SpectrumDisplay::paint(juce::Graphics& g)
             spectrumPath.lineTo(x, y);
     }
 
-    /*spectrumPath.lineTo(width, height);
-    spectrumPath.closeSubPath();
-
-    g.fillPath(spectrumPath);*/
-    g.strokePath(spectrumPath, juce::PathStrokeType(1.5f));
+    g.strokePath(spectrumPath, juce::PathStrokeType(1.0f));
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "components/BandProcessor.h"
+#include "components/MultibandWidget.h"
 
 #if (MSVC)
     #include "ipps.h"
@@ -47,7 +47,7 @@ public:
 
 private:
 
-    BandProcessor bandProcessor;
+    MultibandWidget multibandWidget;
 
     juce::AudioBuffer<float> scopeBuffer;
     juce::AudioBuffer<float> circularBuffer;

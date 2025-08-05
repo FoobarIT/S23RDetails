@@ -31,7 +31,6 @@ public:
         juce::Path arcPath;
 
         auto centre = arcArea.getCentre();
-        float radius = arcArea.getWidth() / 2.0f;
         float thickness = 2.0f;
 
        
@@ -54,8 +53,8 @@ public:
         // L et R
         g.setFont(14.0f);
         g.setColour(juce::Colours::white.withAlpha(0.8f));
-        g.drawText("L", area.getX(), area.getBottom() - 20, 20, 20, juce::Justification::centredLeft);
-        g.drawText("R", area.getRight() - 20, area.getBottom() - 20, 20, 20, juce::Justification::centredRight);
+        g.drawText("L", static_cast<int>(area.getX()), static_cast<int>(area.getBottom() - 20), 20, 20, juce::Justification::centredLeft);
+        g.drawText("R", static_cast<int>(area.getRight() - 20), static_cast<int>(area.getBottom() - 20), 20, 20, juce::Justification::centredRight);
     }
 
 private:

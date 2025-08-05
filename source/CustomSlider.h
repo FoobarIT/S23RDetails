@@ -14,6 +14,7 @@ public:
 
 	void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle, juce::Slider& slider) override 
 	{
+        (void) slider;
         const float radius = juce::jmin(width / 2.0f, height / 2.0f) - 4.0f;
         const float centreX = x + width * 0.5f;
         const float centreY = y + height * 0.5f;

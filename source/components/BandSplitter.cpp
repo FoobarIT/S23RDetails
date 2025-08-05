@@ -3,11 +3,23 @@
 BandSplitterComponent::BandSplitterComponent()
 {
     setInterceptsMouseClicks(true, false);
+    setBufferedToImage (true);
+    setPaintingIsUnclipped (true);
 }
 
 void BandSplitterComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::transparentBlack);
+    // Dessin de l'ombre portée (derrière tout)
+    const int cornerSize = 12;
+    juce::Rectangle<int> bounds = getLocalBounds().reduced (8); // Plus petit pour laisser de la place à l'ombre
+    juce::DropShadow shadow (juce::Colours::black.withAlpha (0.5f), 10, { 0, 4 });
+    juce::Path shadowPath;
+    shadowPath.addRoundedRectangle (bounds.toFloat(), 12.0f);
+    shadow.drawForPath (g, shadowPath);
+
+    // Contour avec coins arrondis
+    g.setColour (juce::Colours::white.withAlpha (0.1f));
+    g.drawRoundedRectangle (bounds.toFloat(), (float) cornerSize, 1.5f);
 
     // Couleurs des bandes
     juce::Colour colours[] = {
