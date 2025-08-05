@@ -29,15 +29,22 @@ public:
     // Callback quand les fréquences changent (f1, f2, f3)
     std::function<void (float, float, float)> onFrequenciesChanged;
 
-    // Component overrides
+    // Comportement du composant
     void paint (juce::Graphics& g) override;
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
 
 private:
-    // Band splitting frequencies
+    // Fréquences de séparation des bandes
     std::vector<float> bandFrequencies { 200.f, 1000.f, 5000.f };
     int draggingIndex = -1;
+
+    // Fonctions de dessin (décomposées depuis paint)
+    void drawBackgroundAndShadow (juce::Graphics& g);
+    void drawBands (juce::Graphics& g);
+    void drawSeparators (juce::Graphics& g);
+    void drawFrequencies (juce::Graphics& g);
+    void drawSpectrum (juce::Graphics& g);
 
     // Traitement audio
     float sampleRate = 44100.f;
@@ -66,21 +73,10 @@ private:
     void timerCallback() override;
     void computeFFT();
 
-    // Helper UI freq <> position
+    // Conversion helper pour les fréquences ? positions
     float frequencyToX (float freq) const;
     float xToFrequency (float x) const;
     float getSeparatorHitboxWidth() const { return 8.0f; }
-
-    void paint (juce::Graphics& g) override;
-    void mouseDown (const juce::MouseEvent& e) override;
-    void mouseDrag (const juce::MouseEvent& e) override;
-
-    // Fonctions de dessin appelées dans paint()
-    void drawBackgroundAndShadow (juce::Graphics& g);
-    void drawBands (juce::Graphics& g);
-    void drawSeparators (juce::Graphics& g);
-    void drawFrequencies (juce::Graphics& g);
-    void drawSpectrum (juce::Graphics& g);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MultibandWidget)
 };
